@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
@@ -11,23 +10,23 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Clock,
   Play,
-  SquareX,
+  Square,
   Bell,
   Smartphone,
   Settings,
   Moon,
   Sun,
-  ChevronDown,
   History,
   Activity,
   Volume2,
+  AlertTriangle,
 } from "lucide-react"
 import { useTheme } from "./theme-provider"
+
 interface ShiftLog {
   id: string
   startTime: Date
@@ -38,7 +37,7 @@ interface ShiftLog {
   alertInterval: number
 }
 
-const ALERT_SOUNDS = [
+export const ALERT_SOUNDS = [
   {
     id: "alarm_clock",
     name: "Alarm Clock",
@@ -108,7 +107,6 @@ export default function ShiftNotifier() {
   const [shiftDuration, setShiftDuration] = useState(5) // hours
   const [alertInterval, setAlertInterval] = useState(0.5) // minutes
   const [alertSound, setAlertSound] = useState("alarm_clock")
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [shiftLogs, setShiftLogs] = useState<ShiftLog[]>([])
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -351,15 +349,18 @@ export default function ShiftNotifier() {
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
-  }
+const formatDuration = (minutes: number) => {
+  const hours = minutes / 60
+  return `${hours.toFixed(2)}h`
+}
 
   const clearLogs = () => {
     setShiftLogs([])
     localStorage.removeItem("shift-notifier-logs")
+  }
+
+  const clearCurrentAlerts = () => {
+    setNotifications([])
   }
 
   const selectedSoundName = ALERT_SOUNDS.find((sound) => sound.id === alertSound)?.name || "Alarm Clock"
@@ -384,14 +385,28 @@ export default function ShiftNotifier() {
             />
 
             <Tabs defaultValue="main" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="main" className="flex items-center gap-2">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="main" className="flex items-center gap-1">
                   <Activity className="h-4 w-4" />
-                  Main
+                  <span className="hidden sm:inline">Main</span>
                 </TabsTrigger>
-                <TabsTrigger value="logs" className="flex items-center gap-2">
+
+                <TabsTrigger value="alerts" className="flex items-center gap-1">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="hidden sm:inline">Alerts</span>
+                  {notifications.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-4 w-4 p-0 text-xs">
+                      {notifications.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="logs" className="flex items-center gap-1">
                   <History className="h-4 w-4" />
-                  Logs
+                  <span className="hidden sm:inline">Logs</span>
+                </TabsTrigger>
+                                <TabsTrigger value="settings" className="flex items-center gap-1">
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Settings</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -435,81 +450,6 @@ export default function ShiftNotifier() {
                   </div>
                 </div>
 
-                {/* Advanced Settings */}
-                <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between">
-                      <div className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Advanced Settings
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? "rotate-180" : ""}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="shift-duration" className="text-sm font-medium">
-                        Shift Duration (hours)
-                      </Label>
-                      <Select
-                        value={shiftDuration.toString()}
-                        onValueChange={(value) => setShiftDuration(Number(value))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="4">4 hours</SelectItem>
-                          <SelectItem value="5">5 hours</SelectItem>
-                          <SelectItem value="6">6 hours</SelectItem>
-                          <SelectItem value="8">8 hours</SelectItem>
-                          <SelectItem value="10">10 hours</SelectItem>
-                          <SelectItem value="12">12 hours</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="alert-interval" className="text-sm font-medium">
-                        Alert Interval (minutes)
-                      </Label>
-                      <Input
-                        id="alert-interval"
-                        type="number"
-                        min="0.5"
-                        max="60"
-                        step="0.5"
-                        value={alertInterval}
-                        onChange={(e) => setAlertInterval(Number(e.target.value))}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="alert-sound" className="text-sm font-medium">
-                        Alert Sound
-                      </Label>
-                      <div className="flex gap-2">
-                        <Select value={alertSound} onValueChange={setAlertSound}>
-                          <SelectTrigger className="flex-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ALERT_SOUNDS.map((sound) => (
-                              <SelectItem key={sound.id} value={sound.id}>
-                                {sound.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button variant="outline" size="icon" onClick={previewSound} title="Preview sound">
-                          <Volume2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Current: {selectedSoundName}</p>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-
                 <Separator />
 
                 {/* Shift Controls */}
@@ -521,7 +461,7 @@ export default function ShiftNotifier() {
                     </Button>
                   ) : (
                     <Button onClick={endShift} variant="destructive" className="w-full" size="lg">
-                      <SquareX className="h-4 w-4 mr-2" />
+                      <Square className="h-4 w-4 mr-2" />
                       End Shift
                     </Button>
                   )}
@@ -549,37 +489,151 @@ export default function ShiftNotifier() {
                         <Badge variant={countdown <= 10 ? "destructive" : "secondary"}>{formatTime(countdown)}</Badge>
                       </div>
                     </div>
+                  </div>
+                )}
+              </TabsContent>
 
-                    {/* Current Shift Alert Log */}
-                    {notifications.length > 0 && (
-                      <>
-                        <Separator />
-                        <Collapsible>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between">
-                              <div className="flex items-center gap-2">
-                                <Bell className="h-4 w-4" />
-                                <span className="text-sm font-medium">
-                                  Current Shift Alerts ({notifications.length})
-                                </span>
+              <TabsContent value="settings" className="space-y-6 mt-6">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="shift-duration" className="text-sm font-medium">
+                      Shift Duration (hours)
+                    </Label>
+                    <Select value={shiftDuration.toString()} onValueChange={(value) => setShiftDuration(Number(value))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="4">4 hours</SelectItem>
+                        <SelectItem value="5">5 hours</SelectItem>
+                        <SelectItem value="6">6 hours</SelectItem>
+                        <SelectItem value="8">8 hours</SelectItem>
+                        <SelectItem value="10">10 hours</SelectItem>
+                        <SelectItem value="12">12 hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Current: {shiftDuration} hour{shiftDuration !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="alert-interval" className="text-sm font-medium">
+                      Alert Interval (minutes)
+                    </Label>
+                    <Input
+                      id="alert-interval"
+                      type="number"
+                      min="0.5"
+                      max="60"
+                      step="0.5"
+                      value={alertInterval}
+                      onChange={(e) => setAlertInterval(Number(e.target.value))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Current: Every {alertInterval} minute{alertInterval !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="alert-sound" className="text-sm font-medium">
+                      Alert Sound
+                    </Label>
+                    <div className="flex gap-2">
+                      <Select value={alertSound} onValueChange={setAlertSound}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ALERT_SOUNDS.map((sound) => (
+                            <SelectItem key={sound.id} value={sound.id}>
+                              {sound.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" size="icon" onClick={previewSound} title="Preview sound">
+                        <Volume2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Current: {selectedSoundName}</p>
+                  </div>
+
+                  {/* <Separator />
+
+                  <div className="space-y-4">
+                    <Label className="text-sm font-medium">Current Configuration</Label>
+                    <div className="grid grid-cols-1 gap-2 text-sm">
+                      <div className="flex justify-between items-center p-2 bg-muted rounded">
+                        <span>Shift Duration:</span>
+                        <Badge variant="outline">{shiftDuration}h</Badge>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-muted rounded">
+                        <span>Alert Interval:</span>
+                        <Badge variant="outline">{alertInterval}m</Badge>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-muted rounded">
+                        <span>Alert Sound:</span>
+                        <Badge variant="outline">{selectedSoundName}</Badge>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-muted rounded">
+                        <span>Notifications:</span>
+                        <Badge variant={enableNotification ? "default" : "secondary"}>
+                          {enableNotification ? "On" : "Off"}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-muted rounded">
+                        <span>Vibration:</span>
+                        <Badge variant={enableVibration ? "default" : "secondary"}>
+                          {enableVibration ? "On" : "Off"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div> */}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="alerts" className="space-y-4 mt-6">
+                {/* Current Shift Alerts */}
+                {notifications.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-sm font-medium">Current Shift Alerts ({notifications.length})</Label>
+                      <Button variant="outline" size="sm" onClick={clearCurrentAlerts}>
+                        Clear All
+                      </Button>
+                    </div>
+                    <ScrollArea className="h-96 w-full rounded-md border p-4">
+                      <div className="space-y-3">
+                        {notifications.map((note, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                              <div>
+                                <div className="text-sm font-medium">Alert #{index + 1}</div>
+                                <div className="text-xs text-muted-foreground">{note}</div>
                               </div>
-                              <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
-                            </Button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="mt-2">
-                            <ScrollArea className="h-32 w-full rounded-md border p-2">
-                              <div className="space-y-1">
-                                {notifications.map((note, index) => (
-                                  <div key={index} className="text-xs text-muted-foreground">
-                                    Alert #{index + 1}: {note}
-                                  </div>
-                                ))}
-                              </div>
-                            </ScrollArea>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {alertInterval}m interval
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                    {startTime && (
+                      <div className="text-center text-sm text-muted-foreground">
+                        Shift started at {startTime.toLocaleTimeString()}
+                      </div>
                     )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No alerts yet</p>
+                    <p className="text-sm">
+                      {startTime ? "Alerts will appear here during your shift" : "Start a shift to see alerts here"}
+                    </p>
                   </div>
                 )}
               </TabsContent>
@@ -594,10 +648,10 @@ export default function ShiftNotifier() {
                         Clear All
                       </Button>
                     </div>
-                    <ScrollArea className="h-96 w-full rounded-md border p-2">
+                    <ScrollArea className="h-96 w-full rounded-md border p-4">
                       <div className="space-y-3">
                         {shiftLogs.map((log) => (
-                          <div key={log.id} className="border rounded-lg p-3 space-y-2">
+                          <div key={log.id} className="border-b p-2 space-y-2">
                             <div className="flex justify-between items-start">
                               <div className="font-medium text-sm">{log.startTime.toLocaleDateString()}</div>
                               <Badge variant="secondary" className="text-xs">
